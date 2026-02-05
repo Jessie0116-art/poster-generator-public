@@ -124,12 +124,27 @@ function generatePoster() {
     
     const canvas = document.getElementById('posterCanvas');
     
+    // 计算合适的图片大小，让图片与模板相互适应
+    // 计算图片和画布的比例
+    const canvasRatio = canvas.width / canvas.height;
+    const imageRatio = uploadedImage.width / uploadedImage.height;
+    
+    // 计算缩放比例，确保图片能够以合适的大小显示
+    let scale;
+    if (imageRatio > canvasRatio) {
+        // 图片更宽，以宽度为基准
+        scale = canvas.width * 0.8 / uploadedImage.width;
+    } else {
+        // 图片更高，以高度为基准
+        scale = canvas.height * 0.8 / uploadedImage.height;
+    }
+    
     // 重置图片位置和大小
     imagePosition = {
-        x: (canvas.width - uploadedImage.width * 0.7) / 2,
-        y: (canvas.height - uploadedImage.height * 0.7) / 2
+        x: (canvas.width - uploadedImage.width * scale) / 2,
+        y: (canvas.height - uploadedImage.height * scale) / 2
     };
-    imageScale = 0.7;
+    imageScale = scale;
     
     // 绘制海报
     drawPoster();
