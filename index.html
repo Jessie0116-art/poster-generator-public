@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>海报生成器</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>海报生成器</h1>
+        
+        <!-- 模板选择区 -->
+        <section class="template-section">
+            <h2>选择模板</h2>
+            <div class="template-grid" id="templateGrid">
+                <!-- 模板将通过JavaScript动态添加 -->
+            </div>
+        </section>
+        
+        <!-- 照片上传区 -->
+        <section class="upload-section">
+            <h2>上传照片</h2>
+            <div class="upload-container">
+                <input type="file" id="photoUpload" accept="image/*" style="display: none;">
+                <label for="photoUpload" class="upload-btn">点击上传照片</label>
+                <div id="uploadPreview" class="upload-preview">
+                    <!-- 上传预览将显示在这里 -->
+                </div>
+            </div>
+        </section>
+        
+        <!-- 海报预览区 -->
+        <section class="preview-section">
+            <h2>海报预览</h2>
+            <div class="preview-container">
+                <canvas id="posterCanvas" width="800" height="1000"></canvas>
+            </div>
+            <button id="generateBtn" class="generate-btn">生成海报</button>
+            <button id="downloadBtn" class="download-btn" style="display: none;">下载海报</button>
+        </section>
+    </div>
+    
+    <script src="script.js"></script>
+</body>
+</html>
