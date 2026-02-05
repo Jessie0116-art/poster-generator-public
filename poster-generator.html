@@ -1,0 +1,247 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>海报生成器</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial; margin:20px; }
+    .container { max-width:1100px; margin:0 auto; }
+    .row { display:flex; gap:16px; align-items:flex-start; }
+    .left { flex:1; }
+    .right { width:320px; }
+    .templates { display:flex; gap:8px; flex-wrap:wrap; }
+    .template-thumb { width:120px; height:160px; object-fit:cover; border:2px solid transparent; cursor:pointer; }
+    .template-thumb.selected { border-color:#0078d4; }
+    #canvasWrap { position:relative; border:1px solid #ddd; display:inline-block; background:#f7f7f7; }
+    canvas { display:block; max-width:100%; height:auto; }
+    #userPreview { position:absolute; top:0; left:0; touch-action:none; cursor:move; transform-origin:0 0; box-shadow:0 4px 10px rgba(0,0,0,0.25); }
+    .controls { margin-top:12px; display:flex; flex-direction:column; gap:8px; }
+    .controls label { font-size:14px; }
+    button { padding:8px 12px; background:#0078d4; color:white; border:none; border-radius:4px; cursor:pointer; }
+    button.secondary { background:#666; }
+    .small { font-size:13px; color:#666; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>H5 海报生成器</h2>
+    <div class="row">
+      <div class="left">
+        <div>
+          <div class="templates" id="templates"></div>
+        </div>
+
+        <div style="margin-top:12px">
+          <div id="canvasWrap">
+            <canvas id="posterCanvas"></canvas>
+            <img id="userPreview" alt="user photo" style="display:none;" draggable="false">
+          </div>
+        </div>
+        <div class="controls">
+          <label>上传照片： <input id="fileInput" type="file" accept="image/*"></label>
+          <label>缩放: <input id="scaleRange" type="range" min="0.1" max="3" step="0.01" value="1"></label>
+          <div style="display:flex;gap:8px;align-items:center">
+            <button id="exportBtn">导出海报 (PNG)</button>
+            <button id="resetBtn" class="secondary">重置照片</button>
+            <span class="small">拖动图片以移动，使用滑块缩放。</span>
+          </div>
+        </div>
+      </div>
+      <div class="right">
+        <h4>说明</h4>
+        <ul>
+          <li>模板来自本机目录：/Users/jessie/Documents/trae_projects/H5/images/</li>
+          <li>选择一个模板，然后上传照片，拖动并调整缩放，点击“导出海报”。</li>
+          <li>请在浏览器以文件方式打开此 HTML（双击或用编辑器打开）。</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // 模板优先使用项目内相对路径（./images/），若不存在则回退到本地绝对路径
+    const templates = [
+      {rel: './images/template1.jpg', abs: 'file:///Users/jessie/Documents/trae_projects/H5/images/template1.jpg'},
+      {rel: './images/template2.jpg', abs: 'file:///Users/jessie/Documents/trae_projects/H5/images/template2.jpg'},
+      {rel: './images/template3.jpg', abs: 'file:///Users/jessie/Documents/trae_projects/H5/images/template3.jpg'},
+      {rel: './images/template4.jpg', abs: 'file:///Users/jessie/Documents/trae_projects/H5/images/template4.jpg'},
+      {rel: './images/template5.jpg', abs: 'file:///Users/jessie/Documents/trae_projects/H5/images/template5.jpg'}
+    ];
+
+    const templatesEl = document.getElementById('templates');
+    const canvas = document.getElementById('posterCanvas');
+    const canvasWrap = document.getElementById('canvasWrap');
+    const userPreview = document.getElementById('userPreview');
+    const fileInput = document.getElementById('fileInput');
+    const scaleRange = document.getElementById('scaleRange');
+    const exportBtn = document.getElementById('exportBtn');
+    const resetBtn = document.getElementById('resetBtn');
+
+    let selectedTemplateIndex = 0;
+    let templateImg = new Image();
+    let userImg = new Image();
+
+    // Preview transform state
+    const state = { x:0, y:0, scale:1, dragging:false, dragStart:{x:0,y:0}, startPos:{x:0,y:0} };
+
+    function buildTemplateThumbnails(){
+      templates.forEach((obj, i) => {
+        const img = document.createElement('img');
+        img.className = 'template-thumb' + (i===selectedTemplateIndex? ' selected':'');
+        img.title = '模板 ' + (i+1);
+        // 优先尝试相对路径，失败时回退到绝对路径
+        img.src = obj.rel;
+        img.addEventListener('error', ()=>{ if(img.src !== obj.abs) img.src = obj.abs; });
+        img.addEventListener('click', ()=>{ selectTemplate(i); });
+        templatesEl.appendChild(img);
+      });
+    }
+
+    function selectTemplate(i){
+      selectedTemplateIndex = i;
+      Array.from(templatesEl.children).forEach((el, idx)=> el.classList.toggle('selected', idx===i));
+      const obj = templates[i];
+      // 先尝试项目内相对路径，再回退到绝对路径
+      loadTemplate(obj.rel, obj.abs);
+    }
+
+    function loadTemplate(relSrc, absSrc){
+      templateImg = new Image();
+      templateImg.crossOrigin = 'anonymous';
+      templateImg.onload = ()=>{
+        canvas.width = templateImg.naturalWidth;
+        canvas.height = templateImg.naturalHeight;
+        drawCanvas();
+        canvas.style.maxWidth = '100%';
+        resetUserPreviewPosition();
+      };
+      templateImg.onerror = ()=>{
+        if(absSrc && templateImg.src !== absSrc){
+          templateImg.src = absSrc; // 回退到绝对路径
+        } else {
+          console.warn('模板图像加载失败：', relSrc, absSrc);
+        }
+      }
+      templateImg.src = relSrc;
+    }
+
+    function drawCanvas(){
+      const ctx = canvas.getContext('2d');
+      ctx.clearRect(0,0,canvas.width,canvas.height);
+      if(templateImg && templateImg.complete){ ctx.drawImage(templateImg, 0,0, canvas.width, canvas.height); }
+      // don't draw user image here; export will composite using exact positions
+    }
+
+    function resetUserPreviewPosition(){
+      state.scale = 1;
+      scaleRange.value = 1;
+      state.x = (canvas.clientWidth - Math.min(canvas.clientWidth, 300))/2;
+      state.y = (canvas.clientHeight - Math.min(canvas.clientHeight, 300))/2;
+      applyPreviewTransform();
+    }
+
+    function applyPreviewTransform(){
+      userPreview.style.transform = `translate(${state.x}px, ${state.y}px) scale(${state.scale})`;
+    }
+
+    // Pointer drag handlers
+    userPreview.addEventListener('pointerdown', (e)=>{
+      e.preventDefault();
+      userPreview.setPointerCapture(e.pointerId);
+      state.dragging = true;
+      state.dragStart = {x: e.clientX, y: e.clientY};
+      const rect = userPreview.getBoundingClientRect();
+      state.startPos = { x: state.x, y: state.y };
+    });
+    window.addEventListener('pointermove', (e)=>{
+      if(!state.dragging) return;
+      const dx = e.clientX - state.dragStart.x;
+      const dy = e.clientY - state.dragStart.y;
+      state.x = state.startPos.x + dx;
+      state.y = state.startPos.y + dy;
+      applyPreviewTransform();
+    });
+    window.addEventListener('pointerup', (e)=>{
+      if(state.dragging){
+        state.dragging = false;
+        try{ userPreview.releasePointerCapture(e.pointerId); }catch(err){}
+      }
+    });
+
+    // Scale control
+    scaleRange.addEventListener('input', ()=>{
+      state.scale = parseFloat(scaleRange.value);
+      applyPreviewTransform();
+    });
+
+    // File input
+    fileInput.addEventListener('change', (ev)=>{
+      const f = ev.target.files && ev.target.files[0];
+      if(!f) return;
+      const url = URL.createObjectURL(f);
+      userImg = new Image();
+      userImg.onload = ()=>{
+        userPreview.src = url;
+        userPreview.style.display = 'block';
+        // size preview element to a reasonable size
+        const displayW = Math.min(canvas.clientWidth * 0.6, userImg.naturalWidth, 800);
+        const aspect = userImg.naturalHeight / userImg.naturalWidth;
+        userPreview.style.width = displayW + 'px';
+        userPreview.style.height = (displayW * aspect) + 'px';
+        resetUserPreviewPosition();
+      }
+      userImg.src = url;
+    });
+
+    // Export composite
+    exportBtn.addEventListener('click', ()=>{
+      if(!templateImg.complete){ alert('请先选择并加载模板。'); return; }
+      const ctx = canvas.getContext('2d');
+      // draw template
+      ctx.clearRect(0,0,canvas.width,canvas.height);
+      ctx.drawImage(templateImg, 0,0, canvas.width, canvas.height);
+      if(userPreview.style.display !== 'none'){
+        // compute positions relative to canvas
+        const canvasRect = canvas.getBoundingClientRect();
+        const previewRect = userPreview.getBoundingClientRect();
+        const scaleToCanvas = canvas.width / canvasRect.width;
+        const drawX = (previewRect.left - canvasRect.left) * scaleToCanvas;
+        const drawY = (previewRect.top - canvasRect.top) * scaleToCanvas;
+        const drawW = previewRect.width * scaleToCanvas;
+        const drawH = previewRect.height * scaleToCanvas;
+        // create an Image element with the original image source (object URL)
+        const img = new Image();
+        img.onload = ()=>{
+          ctx.drawImage(img, drawX, drawY, drawW, drawH);
+          // export
+          const dataURL = canvas.toDataURL('image/png');
+          const a = document.createElement('a');
+          a.href = dataURL;
+          a.download = 'poster.png';
+          a.click();
+        };
+        img.crossOrigin = 'anonymous';
+        img.src = userPreview.src;
+      } else {
+        // only template
+        const dataURL = canvas.toDataURL('image/png');
+        const a = document.createElement('a');
+        a.href = dataURL;
+        a.download = 'poster.png';
+        a.click();
+      }
+    });
+
+    resetBtn.addEventListener('click', ()=>{
+      userPreview.style.display = 'none';
+      userPreview.src = '';
+      fileInput.value = '';
+    });
+
+    // init
+    buildTemplateThumbnails();
+    selectTemplate(0);
+  </script>
+</body>
+</html>
