@@ -169,6 +169,11 @@ function drawPoster() {
 function setupCanvasInteraction() {
     const canvas = document.getElementById('posterCanvas');
     
+    // 触摸事件变量
+    let touchStart = {};
+    let lastDistance = 0;
+    let lastTouchCenter = {};
+    
     // 鼠标按下事件
     canvas.addEventListener('mousedown', function(e) {
         const rect = canvas.getBoundingClientRect();
@@ -249,6 +254,111 @@ function setupCanvasInteraction() {
             // 重绘海报
             drawPoster();
         }
+    });
+    
+    // 触摸开始事件
+    canvas.addEventListener('touchstart', function(e) {
+        e.preventDefault();
+        const touches = e.touches;
+        const rect = canvas.getBoundingClientRect();
+        
+        if (touches.length === 1) {
+            // 单点触摸 - 准备拖拽
+            const touchX = touches[0].clientX - rect.left;
+            const touchY = touches[0].clientY - rect.top;
+            
+            // 计算照片边界
+            const photoWidth = uploadedImage.width * imageScale;
+            const photoHeight = uploadedImage.height * imageScale;
+            
+            // 检查触摸是否在照片上
+            if (touchX >= imagePosition.x && touchX <= imagePosition.x + photoWidth &&
+                touchY >= imagePosition.y && touchY <= imagePosition.y + photoHeight) {
+                isDragging = true;
+                dragStart.x = touchX - imagePosition.x;
+                dragStart.y = touchY - imagePosition.y;
+                touchStart.x = touchX;
+                touchStart.y = touchY;
+            }
+        } else if (touches.length === 2) {
+            // 双点触摸 - 准备缩放
+            const dx = touches[0].clientX - touches[1].clientX;
+            const dy = touches[0].clientY - touches[1].clientY;
+            lastDistance = Math.sqrt(dx * dx + dy * dy);
+            
+            // 计算触摸中心
+            lastTouchCenter.x = (touches[0].clientX + touches[1].clientX) / 2 - rect.left;
+            lastTouchCenter.y = (touches[0].clientY + touches[1].clientY) / 2 - rect.top;
+        }
+    });
+    
+    // 触摸移动事件
+    canvas.addEventListener('touchmove', function(e) {
+        e.preventDefault();
+        const touches = e.touches;
+        const rect = canvas.getBoundingClientRect();
+        
+        if (touches.length === 1 && isDragging) {
+            // 单点触摸 - 拖拽
+            const touchX = touches[0].clientX - rect.left;
+            const touchY = touches[0].clientY - rect.top;
+            
+            // 更新图片位置
+            imagePosition.x = touchX - dragStart.x;
+            imagePosition.y = touchY - dragStart.y;
+            
+            // 重绘海报
+            drawPoster();
+        } else if (touches.length === 2) {
+            // 双点触摸 - 缩放
+            const dx = touches[0].clientX - touches[1].clientX;
+            const dy = touches[0].clientY - touches[1].clientY;
+            const currentDistance = Math.sqrt(dx * dx + dy * dy);
+            
+            // 计算触摸中心
+            const currentTouchCenter = {
+                x: (touches[0].clientX + touches[1].clientX) / 2 - rect.left,
+                y: (touches[0].clientY + touches[1].clientY) / 2 - rect.top
+            };
+            
+            if (lastDistance > 0) {
+                // 计算缩放因子
+                const scaleFactor = currentDistance / lastDistance;
+                
+                // 更新缩放比例
+                const newScale = Math.max(0.1, Math.min(2, imageScale * scaleFactor));
+                
+                // 计算缩放中心
+                const scaleCenterX = lastTouchCenter.x - imagePosition.x;
+                const scaleCenterY = lastTouchCenter.y - imagePosition.y;
+                
+                // 调整位置以保持触摸中心在同一位置
+                imagePosition.x = currentTouchCenter.x - scaleCenterX * (newScale / imageScale);
+                imagePosition.y = currentTouchCenter.y - scaleCenterY * (newScale / imageScale);
+                
+                // 更新缩放比例
+                imageScale = newScale;
+                
+                // 重绘海报
+                drawPoster();
+            }
+            
+            // 更新最后距离和触摸中心
+            lastDistance = currentDistance;
+            lastTouchCenter = currentTouchCenter;
+        }
+    });
+    
+    // 触摸结束事件
+    canvas.addEventListener('touchend', function() {
+        isDragging = false;
+        lastDistance = 0;
+    });
+    
+    // 触摸取消事件
+    canvas.addEventListener('touchcancel', function() {
+        isDragging = false;
+        lastDistance = 0;
     });
 }
 
