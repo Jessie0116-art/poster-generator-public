@@ -141,6 +141,15 @@ function generatePoster() {
     document.getElementById('downloadBtn').style.display = 'inline-block';
 }
 
+// 检查点是否在图片上
+function isPointInImage(x, y) {
+    const photoWidth = uploadedImage.width * imageScale;
+    const photoHeight = uploadedImage.height * imageScale;
+    
+    return x >= imagePosition.x && x <= imagePosition.x + photoWidth &&
+           y >= imagePosition.y && y <= imagePosition.y + photoHeight;
+}
+
 // 绘制海报
 function drawPoster() {
     const canvas = document.getElementById('posterCanvas');
@@ -180,13 +189,8 @@ function setupCanvasInteraction() {
         const mouseX = e.clientX - rect.left;
         const mouseY = e.clientY - rect.top;
         
-        // 计算照片边界
-        const photoWidth = uploadedImage.width * imageScale;
-        const photoHeight = uploadedImage.height * imageScale;
-        
         // 检查鼠标是否在照片上
-        if (mouseX >= imagePosition.x && mouseX <= imagePosition.x + photoWidth &&
-            mouseY >= imagePosition.y && mouseY <= imagePosition.y + photoHeight) {
+        if (isPointInImage(mouseX, mouseY)) {
             isDragging = true;
             dragStart.x = mouseX - imagePosition.x;
             dragStart.y = mouseY - imagePosition.y;
@@ -267,13 +271,8 @@ function setupCanvasInteraction() {
             const touchX = touches[0].clientX - rect.left;
             const touchY = touches[0].clientY - rect.top;
             
-            // 计算照片边界
-            const photoWidth = uploadedImage.width * imageScale;
-            const photoHeight = uploadedImage.height * imageScale;
-            
             // 检查触摸是否在照片上
-            if (touchX >= imagePosition.x && touchX <= imagePosition.x + photoWidth &&
-                touchY >= imagePosition.y && touchY <= imagePosition.y + photoHeight) {
+            if (isPointInImage(touchX, touchY)) {
                 isDragging = true;
                 dragStart.x = touchX - imagePosition.x;
                 dragStart.y = touchY - imagePosition.y;
