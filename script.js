@@ -129,14 +129,14 @@ function generatePoster() {
     const canvasRatio = canvas.width / canvas.height;
     const imageRatio = uploadedImage.width / uploadedImage.height;
     
-    // 计算缩放比例，确保图片能够以合适的大小显示
+    // 计算缩放比例，确保图片能够以较大的大小显示
     let scale;
     if (imageRatio > canvasRatio) {
         // 图片更宽，以宽度为基准
-        scale = canvas.width * 0.8 / uploadedImage.width;
+        scale = canvas.width * 0.95 / uploadedImage.width;
     } else {
         // 图片更高，以高度为基准
-        scale = canvas.height * 0.8 / uploadedImage.height;
+        scale = canvas.height * 0.95 / uploadedImage.height;
     }
     
     // 重置图片位置和大小
