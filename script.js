@@ -146,6 +146,14 @@ function generatePoster() {
     };
     imageScale = scale;
     
+    // 更新滚动条值
+    const scaleSlider = document.getElementById('scaleSlider');
+    const scaleValue = document.getElementById('scaleValue');
+    if (scaleSlider && scaleValue) {
+        scaleSlider.value = scale;
+        scaleValue.textContent = Math.round(scale * 100) + '%';
+    }
+    
     // 绘制海报
     drawPoster();
     
@@ -154,6 +162,43 @@ function generatePoster() {
     
     // 显示下载按钮
     document.getElementById('downloadBtn').style.display = 'inline-block';
+    
+    // 添加滚动条事件
+    setupScaleSlider();
+}
+
+// 设置缩放滚动条
+function setupScaleSlider() {
+    const scaleSlider = document.getElementById('scaleSlider');
+    const scaleValue = document.getElementById('scaleValue');
+    
+    if (scaleSlider && scaleValue) {
+        scaleSlider.addEventListener('input', function() {
+            const newScale = parseFloat(this.value);
+            const canvas = document.getElementById('posterCanvas');
+            
+            // 计算缩放中心（保持图片中心不变）
+            const oldWidth = uploadedImage.width * imageScale;
+            const oldHeight = uploadedImage.height * imageScale;
+            const oldCenterX = imagePosition.x + oldWidth / 2;
+            const oldCenterY = imagePosition.y + oldHeight / 2;
+            
+            // 更新缩放比例
+            imageScale = newScale;
+            
+            // 计算新位置，保持中心不变
+            const newWidth = uploadedImage.width * newScale;
+            const newHeight = uploadedImage.height * newScale;
+            imagePosition.x = oldCenterX - newWidth / 2;
+            imagePosition.y = oldCenterY - newHeight / 2;
+            
+            // 更新显示值
+            scaleValue.textContent = Math.round(newScale * 100) + '%';
+            
+            // 重绘海报
+            drawPoster();
+        });
+    }
 }
 
 // 检查点是否在图片上
@@ -173,18 +218,18 @@ function drawPoster() {
     // 清空画布
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     
+    // 计算照片大小
+    const photoWidth = uploadedImage.width * imageScale;
+    const photoHeight = uploadedImage.height * imageScale;
+    
+    // 绘制照片（底层）
+    ctx.drawImage(uploadedImage, imagePosition.x, imagePosition.y, photoWidth, photoHeight);
+    
     // 加载模板图片
     const templateImg = new Image();
     templateImg.onload = function() {
-        // 绘制模板
+        // 绘制模板（顶层）
         ctx.drawImage(templateImg, 0, 0, canvas.width, canvas.height);
-        
-        // 计算照片大小
-        const photoWidth = uploadedImage.width * imageScale;
-        const photoHeight = uploadedImage.height * imageScale;
-        
-        // 绘制照片
-        ctx.drawImage(uploadedImage, imagePosition.x, imagePosition.y, photoWidth, photoHeight);
     };
     templateImg.src = selectedTemplate.image;
 }
